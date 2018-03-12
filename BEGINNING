@@ -1,0 +1,52 @@
+suppressPackageStartupMessages(library(googleVis))
+
+# Load the data
+data <- read.csv("AFL Data.csv", header = TRUE, stringsAsFactors = FALSE)
+
+nacols <- function(df) {
+    colnames(df)[unlist(lapply(df, function(x) any(is.na(x))))]
+}
+
+nacols(data)
+
+table(data$Period.Name, rowSums(is.na(data)))
+
+# Remove the columns with missing data
+data <- data[!(names(data) %in% nacols(data))]
+
+suppressPackageStartupMessages(library(lubridate))
+suppressPackageStartupMessages(library(dplyr))
+
+# Convert to factors the colums we are certain it doesn't contain time
+data$Position <- factor(data$Position)
+data$Period.Name <- factor(data$Period.Name)
+
+# Create a function that return a class of the column
+allClass <- function(x) {unlist(lapply(unclass(x),class))}
+
+# Get the column classes
+column.classes <- allClass(data)
+
+# What columns contain time as character
+time.columns.positions <- which(column.classes == "character")
+
+# Select those columns
+data.time <- data %>% select(time.columns.positions)
+
+# Convert to seconds
+data.time <- sapply(data.time, function(x) {period_to_seconds(hms(x))} )
+
+# Put them back in the original data frame
+data[colnames(data.time)] <- data.time
+
+aggregate(Player.Game.Time~Period.Name, data,
+          function(x){c(MEAN = mean(x), SD = sd(x), N = length(x))})
+          
+# The distribution on play time across quarters
+library(ggplot2)
+gg <- ggplot(data, aes(Player.Game.Time, fill = Period.Name))
+gg <- gg + geom_density(alpha = 0.5)
+gg <- gg + theme_bw()
+gg
+
+https://cran.r-project.org/web/packages/kerasR/vignettes/introduction.html
