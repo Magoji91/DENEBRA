@@ -1,52 +1,747 @@
-suppressPackageStartupMessages(library(googleVis))
+Variable types and indexing techniques:
 
-# Load the data
-data <- read.csv("AFL Data.csv", header = TRUE, stringsAsFactors = FALSE)
+The most basic variable in R is a vector. An R vector is a sequence of values of the same type.
+All basic operations in R act on vectors (think of the element-wise arithmetic, for example). The
+basic types in R are as follows.
 
-nacols <- function(df) {
-    colnames(df)[unlist(lapply(df, function(x) any(is.na(x))))]
+I-)   Numeric: data (approximations of the real numbers, ℝ)
+II-)  Integer: data (whole numbers, ℤ)
+III-) Factor: Categorical data (simple classifications, like gender)
+IV-)  Ordered: Ordinal data (ordered classifications, like educational level)
+V-)   Character: data (strings)
+VI-)  Raw: Binary data
+
+Each element of a vector can be given a name. This can be done by passing named arguments to
+the c() function or later with the names function. Such names can be helpful giving meaning to
+your variables. For example compare the vector:
+
+x <- c("red", "green", "blue")
+capColor = c(huey = "red", duey = "blue", louie = "green")
+
+Elements of a vector can be selected or replaced using the square bracket operator [ ].
+
+capColor["louie"]
+names(capColor)[capColor == "blue"]
+x <- c(4, 7, 6, 5, 2, 8)
+I <- x < 6
+J <- x > 7
+x[I | J]
+x[c(TRUE, FALSE)]
+x[c(-1, -2)]
+
+Replacing values in vectors can be done in the same way. For example, you may check that in
+the following assignment
+x <- 1:10
+x[c(TRUE, FALSE)] <- 1
+every other value of x is replaced with 1.
+
+The double bracket
+operator ([[ ]]) may only result in a single item, and it returns the object in the list itself.
+Besides indexing, the dollar operator $ can be used to retrieve a single element. To understand
+the above, check the results of the following statements.
+L <- list(x = c(1:5), y = c("a", "b", "c"), z = capColor)
+L[[2]]
+L$y
+L[c(1, 3)]
+L[c("x", "y")]
+L[["z"]]
+
+A data.frame is not much more than a list of vectors, possibly of different types, but with
+every vector (now columns) of the same length. Since data.frames are a type of list, indexing
+them with a single index returns a sub-data.frame; that is, a data.frame with less columns.
+Likewise, the dollar operator returns a vector, not a sub-data.frame.
+
+Rows can be indexed using two indices in the bracket operator, separated by a comma. The first index indicates rows,
+the second indicates columns. If one of the indices is left out, no selection is made (so
+everything is returned). It is important to realize that the result of a two-index selection is
+simplified by R as much as possible. Hence, selecting a single column using a two-index results
+in a vector. This behaviour may be switched off using drop=FALSE as an extra parameter. Here
+are some short examples demonstrating the above.
+
+NA Stands for not available. NA is a placeholder for a missing value. All basic operations in R
+handle NA without crashing and mostly return NA as an answer whenever one of the input
+arguments is NA. If you understand NA, you should be able to predict the result of the
+following R statements.
+NA + 1
+sum(c(NA, 1, 2))
+median(c(NA, 1, 2, 3), na.rm = TRUE)
+length(c(NA, 2, 3, 4))
+3 == NA
+NA == NA
+TRUE | NA
+
+You may think of NULL as the empty set from mathematics. NULL is special since it has no
+class (its class is NULL) and has length 0 so it does not take up any space in a vector. In
+particular, if you understand NULL, the result of the following statements should be clear to
+you without starting R.
+**The function is.null can be used to detect NULL variables
+length(c(1, 2, NULL, 4))
+sum(c(1, 2, NULL, 4))
+x <- NULL
+c(x, 2)
+
+Inf Stands for infinity and only applies to vectors of class numeric. A vector of class integer can
+never be Inf. This is because the Inf in R is directly derived from the international standard
+for floating point arithmetic. Technically, Inf is a valid numeric that results from
+calculations like division of a number by zero. Since Inf is a numeric, operations between Inf
+and a finite numeric are well-defined and comparison operators work as expected. If you
+understand Inf, the result of the following statements should be clear to you.
+pi/0
+2 * Inf
+Inf - 1e+10
+Inf + Inf
+3 < -Inf
+Inf == Inf
+
+NaN Stands for not a number. This is generally the result of a calculation of which the result is
+unknown, but it is surely not a number. In particular operations like 0/0, Inf-Inf and
+Inf/Inf result in NaN. Technically, NaN is of class numeric, which may seem odd since it is
+used to indicate that something is not numeric. Computations involving numbers and NaN
+always result in NaN, so the result of the following computations should be clear.
+
+Best practice. A freshly read data.frame should always be inspected with functions
+like head, str, and summary
+
+read.csv for comma separated values with period as decimal separator.
+read.csv2 for semicolon separated values with comma as decimal separator.
+read.delim tab-delimited files with period as decimal separator.
+read.delim2 tab-delimited files with comma as decimal separator.
+read.fwf data with a predetermined number of bytes per column.
+
+Argument description
+header: Does the first line contain column names?
+col.names: character vector with column names.
+na.string: Which strings should be considered NA?
+colClasses: character vector with the types of columns.Will coerce the columns to the specified types.
+stringsAsFactors: If TRUE, converts all character vectors intofactor vectors.
+sepற Field separator.
+
+person <- read.csv("files/unnamed.txt"))
+
+person <- read.csv(
+file = "files/unnamed.txt"
+, header = FALSE
+, col.names = c("age","height") )
+
+In the first attempt, read.csv interprets the first line as column headers and fixes the numeric
+data to meet R's variable naming standards by prepending an X.
+If colClasses is not specified by the user, read.table will try to determine the column types.
+Although this may seem convenient, it is noticeably slower for larger files (say, larger than a few
+MB) and it may yield unexpected results. For example, in the above script, one of the rows
+contains a malformed numerical variable (5.7*), causing R to interpret the whole column as a
+text variable. Moreover, by default text variables are converted to factor, so we are now stuck
+with a height variable expressed as levels in a categorical variable:
+
+str(person)
+
+Using colClasses, we can force R to either interpret the columns in the way we want or throw
+an error when this is not possible.
+
+read.csv("files/unnamed.txt",
+header=FALSE,
+colClasses=c('numeric','numeric'))
+
+This behaviour is desirable if you need to be strict about how data is offered to your R script.
+However, unless you are prepared to write tryCatch constructions, a script containing the
+above code will stop executing completely when an error is encountered.
+As an alternative, columns can be read in as character by setting stringsAsFactors=FALSE.
+Next, one of the as.-functions can be applied to convert to the desired type, as shown below.
+
+dat <- read.csv(
+file = "files/unnamed.txt"
+, header = FALSE
+, col.names = c("age","height")
+, stringsAsFactors=FALSE)
+dat$height <- as.numeric(dat$height)
+
+Now, everything is read in and the height column is translated to numeric, with the exception
+of the row containing 5.7*. Moreover, since we now get a warning instead of an error, a script
+containing this statement will continue to run, albeit with less data to analyse than it was
+supposed to. It is of course up to the programmer to check for these extra NA's and handle them
+appropriately.
+
+Step 1. Reading data. The readLines function accepts filename as argument and returns a
+character vector containing one element for each line in the file. readLines detects both the
+end-of-line and carriage return characters so lines are detected regardless of whether the file
+was created under DOS, UNIX or MAC (each OS has traditionally had different ways of marking an
+end-of-line). Reading in the Daltons file yields the following.
+(txt <- readLines("files/daltons.txt"))
+
+Step 2. Selecting lines containing data. This is generally done by throwing out lines containing
+comments or otherwise lines that do not contain any data fields. You can use grep or grepl to
+detect such lines.
+# detect lines starting with a percentage sign..
+I <- grepl("^%", txt)
+# and throw them out
+(dat <- txt[!I])
+
+***Here, the first argument of grepl is a search pattern, where the caret (̂) indicates a start-of-line.
+The result of grepl is a logical vector that indicates which elements of txt contain the
+pattern 'start-of-line' followed by a percent-sign. The functionality of grep and grepl will be
+discussed in more detail in section 2.4.2.
+
+Step 3. Split lines into separate fields. This can be done with strsplit. This function accepts
+a character vector and a split argument which tells strsplit how to split a string into
+substrings. The result is a list of character vectors.
+(fieldList <- strsplit(dat, split = ","))
+
+Here, split is a single character or sequence of characters that are to be interpreted as field
+separators. By default, split is interpreted as a regular expression (see Section 2.4.2) which
+means you need to be careful when the split argument contains any of the special characters
+listed on page 25. The meaning of these special characters can be ignored by passing
+fixed=TRUE as extra parameter.
+
+Step 4. Standardize rows. The goal of this step is to make sure that 1) every row has the same
+number of fields and 2) the fields are in the right order. In read.table, lines that contain less
+fields than the maximum number of fields detected are appended with NA. One advantage of
+the do-it-yourself approach shown here is that we do not have to make this assumption. The
+easiest way to standardize rows is to write a function that takes a single character vector as
+input and assigns the values in the right order.
+assignFields <- function(x){
+out <- character(3)
+# get names
+i <- grepl("[[:alpha:]]",x)
+out[1] <- x[i]
+# get birth date (if any)
+i <- which(as.numeric(x) < 1890)
+out[2] <- ifelse(length(i)>0, x[i], NA)
+# get death date (if any)
+i <- which(as.numeric(x) > 1890)
+out[3] <- ifelse(length(i)>0, x[i], NA)
+out
 }
 
-nacols(data)
+The above function accepts a character vector and assigns three values to an output vector of
+class character. The grepl statement detects fields containing alphabetical values a-z or
+A-Z. To assign year of birth and year of death, we use the knowledge that all Dalton brothers
+were born before and died after 1890. To retrieve the fields for each row in the example, we
+need to apply this function to every element of fieldList.
+standardFields <- lapply(fieldList, assignFields)
+standardFields
+## [[1]]
+## [1] "Gratt" "1861" "1892"
+##
+## [[2]]
+## [1] "Bob" NA "1892"
+##
+## [[3]]
+## [1] "Emmet" "1871" "1937"
 
-table(data$Period.Name, rowSums(is.na(data)))
+Here, we suppressed the warnings about failed conversions that R generates in the output.
+The advantage of this approach is having greater flexibility than read.table offers. However,
+since we are interpreting the value of fields here, it is unavoidable to know about the contents of
+the dataset which makes it hard to generalize the field assigner function. Furthermore,
+assignFields function we wrote is still relatively fragile. That is: it crashes for example when
+the input vector contains two or more text-fields or when it contains more than one numeric
+value larger than 1890. Again, no one but the data analyst is probably in a better position to
+choose how safe and general the field assigner should be.
+Tip. Element-wise operations over lists are easy to parallelize with the parallel
+package that comes with the standard R installation. For example, on a quadcore
+computer you can do the following.
+library(parallel)
+cluster <- makeCluster(4)
+standardFields <- parLapply(cl=cluster, fieldList, assignFields)
+stopCluster(cl)
+Of course, parallelization only makes sense when you have a fairly long list to process,
+since there is some overhead in setting up and running the cluster.
 
-# Remove the columns with missing data
-data <- data[!(names(data) %in% nacols(data))]
+Step 5. Transform to data.frame. There are several ways to transform a list to a data.frame
+object. Here, first all elements are copied into a matrix which is then coerced into a
+data.frame.
+(M <- matrix(
+unlist(standardFields)
+, nrow=length(standardFields)
+, byrow=TRUE))
+## [,1] [,2] [,3]
+## [1,] "Gratt" "1861" "1892"
+## [2,] "Bob" NA "1892"
+## [3,] "Emmet" "1871" "1937"
+colnames(M) <- c("name","birth","death")
+(daltons <- as.data.frame(M, stringsAsFactors=FALSE))
+## name birth death
+An introduction to data cleaning with R 17
+## 1 Gratt 1861 1892
+## 2 Bob <NA> 1892
+## 3 Emmet 1871 1937
+The function unlist concatenates all vectors in a list into one large character vector. We then
+use that vector to fill a matrix of class character. However, the matrix function usually fills
+up a matrix column by column. Here, our data is stored with rows concatenated, so we need to
+add the argument byrow=TRUE. Finally, we add column names and coerce the matrix to a
+data.frame. We use stringsAsFactors=FALSE since we have not started interpreting the
+values yet.
 
-suppressPackageStartupMessages(library(lubridate))
-suppressPackageStartupMessages(library(dplyr))
+Step 6. Normalize and coerce to correct types.
+This step consists of preparing the character columns of our data.frame for coercion and
+translating numbers into numeric vectors and possibly character vectors to factor variables.
+String normalization is the subject of section 2.4.1 and type conversion is discussed in some
+more detail in the next section. However, in our example we can suffice with the following
+statements.
+daltons$birth <- as.numeric(daltons$birth)
+daltons$death <- as.numeric(daltons$death)
+daltons
+## name birth death
+## 1 Gratt 1861 1892
+## 2 Bob NA 1892
+## 3 Emmet 1871 1937
+Or, using transform:
+daltons = transform( daltons
+, birth = as.numeric(birth)
+, death = as.numeric(death)
+)
 
-# Convert to factors the colums we are certain it doesn't contain time
-data$Position <- factor(data$Position)
-data$Period.Name <- factor(data$Period.Name)
+2.3.1 Introduction to R's typing system
+Everything in R is an object 4
+. An object is a container of data endowed with a label describing
+the data. Objects can be created, destroyed or overwritten on-the-fly by the user.
+The function class returns the class label of an R object.
+class(c("abc", "def"))
 
-# Create a function that return a class of the column
-allClass <- function(x) {unlist(lapply(unclass(x),class))}
+Tip. Here's a quick way to retrieve the classes of all columns in a data.frame called
+dat.
+sapply(dat, class)
 
-# Get the column classes
-column.classes <- allClass(data)
+In R, the value of categorical variables is stored in factor variables. A factor is an integer
+vector endowed with a table specifying what integer value corresponds to what level. The
+values in this translation table can be requested with the levels function.
+f <- factor(c("a", "b", "a", "a", "c"))
+levels(f)
 
-# What columns contain time as character
-time.columns.positions <- which(column.classes == "character")
+The use of integers combined with a translation table is not uncommon in statistical software,
+so chances are that you eventually have to make such a translation by hand. For example,
+suppose we read in a vector where 1 stands for male, 2 stands for female and 0 stands for
+unknown. Conversion to a factor variable can be done as in the example below.
+# example:
+gender <- c(2, 1, 1, 2, 0, 1, 1)
+# recoding table, stored in a simple vector
+recode <- c(male = 1, female = 2)
+(gender <- factor(gender, levels = recode, labels = names(recode)))
+## [1] female male male female <NA> male male
+## Levels: male female
 
-# Select those columns
-data.time <- data %>% select(time.columns.positions)
+Note that we do not explicitly need to set NA as a label. Every integer value that is encountered
+in the first argument, but not in the levels argument will be regarded missing.
+Levels in a factor variable have no natural ordering. However in multivariate (regression)
+analyses it can be beneficial to fix one of the levels as the reference level. R's standard
+multivariate routines (lm, glm) use the first level as reference level. The relevel function allows
+you to determine which level comes first.
+(gender <- relevel(gender, ref = "female"))
 
-# Convert to seconds
-data.time <- sapply(data.time, function(x) {period_to_seconds(hms(x))} )
+Levels can also be reordered, depending on the mean value of another variable, for example:
+age <- c(27, 52, 65, 34, 89, 45, 68)
+(gender <- reorder(gender, age))
 
-# Put them back in the original data frame
-data[colnames(data.time)] <- data.time
+The lubridate package13 contains a number of functions facilitating the conversion of text to
+POSIXct dates. As an example, consider the following code.
+library(lubridate)
+dates <- c("15/02/2013", "15 Feb 13", "It happened on 15 02 '13")
+dmy(dates)
+## [1] "2013-02-15 UTC" "2013-02-15 UTC" "2013-02-15 UTC"
 
-aggregate(Player.Game.Time~Period.Name, data,
-          function(x){c(MEAN = mean(x), SD = sd(x), N = length(x))})
-          
-# The distribution on play time across quarters
-library(ggplot2)
-gg <- ggplot(data, aes(Player.Game.Time, fill = Period.Name))
-gg <- gg + geom_density(alpha = 0.5)
-gg <- gg + theme_bw()
-gg
+Note. It is not uncommon to indicate years with two numbers, leaving out the
+indication of century. In R, 00-68 are interpreted as 2000-2068 and 69-99 as
+1969-1999.
+dmy("01 01 68")
 
-https://cran.r-project.org/web/packages/kerasR/vignettes/introduction.html
+Code description Example
+%a Abbreviated weekday name in the current locale. Mon
+%A Full weekday name in the current locale. Monday
+%b Abbreviated month name in the current locale. Sep
+%B Full month name in the current locale. September
+%m Month number (01-12) 09
+%d Day of the month as decimal number (01-31). 28
+%y Year without century (00-99) 13
+%Y Year including century. 2013
+This behaviour is according to the 2008 POSIX standard, but one should expect that
+this interpretation changes over time.
+It should be noted that lubridate (as well as R's base functionality) is only capable of
+converting certain standard notations. For example, the following notation does not convert.
+dmy("15 Febr. 2013")
+
+If you know the textual format that is used to describe a date in the input, you may want to use
+R's core functionality to convert from text to POSIXct. This can be done with the as.POSIXct
+function. It takes as arguments a character vector with time/date strings and a string
+describing the format.
+dates <- c("15-9-2009", "16-07-2008", "17 12-2007", "29-02-2011")
+as.POSIXct(dates, format = "%d-%m-%Y")
+
+Finally, to convert dates from POSIXct back to character, one may use the format function that
+comes with base R. It accepts a POSIXct date/time object and an output format string.
+An introduction to data cleaning with R 22
+mybirth <- dmy("28 Sep 1976")
+format(mybirth, format = "I was born on %B %d, %Y")
+
+2.4.1 String normalization
+String normalization techniques are aimed at transforming a variety of strings to a smaller set of
+string values which are more easily processed. By default, R comes with extensive string
+manipulation functionality that is based on the two basic string operations: finding a pattern in a
+string and replacing one pattern with another. We will deal with R's generic functions below but
+start by pointing out some common string cleaning operations.
+The stringr package offers a number of functions that make some string manipulation
+tasks a lot easier than they would be with R's base functions. For example, extra white spaces at
+the beginning or end of a string can be removed using str_trim.
+library(stringr)
+str_trim(" hello world ")
+## [1] "hello world"
+str_trim(" hello world ", side = "left")
+## [1] "hello world "
+str_trim(" hello world ", side = "right")
+## [1] " hello world"
+
+Conversely, strings can be padded with spaces or other characters with str_pad to a certain
+width. For example, numerical codes are often represented with prepending zeros.
+An introduction to data cleaning with R 23
+str_pad(112, width = 6, side = "left", pad = 0)
+
+Both str_trim and str_pad accept a side argument to indicate whether trimming or padding
+should occur at the beginning (left), end (right) or both sides of the string.
+Converting strings to complete upper or lower case can be done with R's built-in toupper and
+tolower functions.
+toupper("Hello world")
+tolower("Hello World")
+
+2.4.2 Approximate string matching
+There are two forms of string matching. The first consists of determining whether a (range of)
+substring(s) occurs within another string. In this case one needs to specify a range of substrings
+(called a pattern) to search for in another string. In the second form one defines a distance
+metric between strings that measures how ``different'' two strings are. Below we will give a
+short introduction to pattern matching and string distances with R.
+There are several pattern matching functions that come with base R. The most used are
+probably grep and grepl. Both functions take a pattern and a character vector as input. The
+output only differs in that grepl returns a logical index, indicating which element of the input
+character vector contains the pattern, while grep returns a numerical index. You may think of
+grep(...) as which(grepl(...)).
+
+In the most simple case, the pattern to look for is a simple substring. For example, using the
+data of the example on page 23, we get the following.
+gender <- c("M", "male ", "Female", "fem.")
+grepl("m", gender)
+## [1] FALSE TRUE TRUE TRUE
+grep("m", gender)
+## [1] 2 3 4
+
+Note that the result is case sensitive: the capital M in the first element of gender does not match
+the lower case m. There are several ways to circumvent this case sensitivity. Either by case
+normalization or by the optional argument ignore.case.
+grepl("m", gender, ignore.case = TRUE)
+## [1] TRUE TRUE TRUE TRUE
+grepl("m", tolower(gender))
+## [1] TRUE TRUE TRUE TRUE
+
+Obviously, looking for the occurrence of m or M in the gender vector does not allow us to
+determine which strings pertain to male and which not. Preferably we would like to search for
+strings that start with an m or M. Fortunately, the search patterns that grep accepts allow for
+such searches. The beginning of a string is indicated with a caret (̂).
+grepl("^m", gender, ignore.case = TRUE)
+## [1] TRUE TRUE FALSE FALSE
+
+An introduction to data cleaning with R 24
+Indeed, the grepl function now finds only the first two elements of gender. The caret is an
+example of a so-called meta-character. That is, it does not indicate the caret itself but
+something else, namely the beginning of a string. The search patterns that grep, grepl (and
+sub and gsub) understand have more of these meta-characters, namely:
+. \ | ( ) [ { ^ $ * + ?
+
+This will make grepl or grep ignore any meta-characters in the search string.
+Search patterns using meta-characters are called regular expressions. Regular expressions offer
+powerful and flexible ways to search (and alter) text. A discussion of regular expressions is
+beyond the scope of these lecture notes. However, a concise description of regular expressions
+allowed by R's built-in string processing functions can be found by typing ?regex at the R
+command line. The books by Fitzgerald10 or Friedl 11 provide a thorough introduction to the
+subject of regular expression. If you frequently have to deal with ``messy'' text variables,
+learning to work with regular expressions is a worthwhile investment. Moreover, since many
+popular programming languages support some dialect of regexps, it is an investment that could
+pay off several times.
+We now turn our attention to the second method of approximate matching, namely string
+distances. A string distance is an algorithm or equation that indicates how much two strings
+differ from each other. An important distance measure is implemented by the R's native adist
+function. This function counts how many basic operations are needed to turn one string into
+another. These operations include insertion, deletion or substitution of a single character 19. For
+example
+adist("abc", "bac")
+## [,1]
+## [1,] 2
+The result equals two since turning "abc" into "bac" involves two character substitutions:
+abc→bbc→bac.
+Using adist, we can compare fuzzy text strings to a list of known codes. For example:
+codes <- c("male", "female")
+D <- adist(gender, codes)
+colnames(D) <- codes
+rownames(D) <- gender
+D
+## male female
+## M 4 6
+## male 1 3
+## Female 2 1
+## fem. 4 3
+Here, adist returns the distance matrix between our vector of fixed codes and the input data.
+For readability we added row- and column names accordingly. Now, to find out which code
+matches best with our raw data, we need to find the index of the smallest distance for each row
+of D. This can be done as follows.
+An introduction to data cleaning with R 25
+i <- apply(D, 1, which.min)
+data.frame(rawtext = gender, coded = codes[i])
+## rawtext coded
+## 1 M male
+## 2 male male
+## 3 Female female
+## 4 fem. female
+
+We use apply to apply which.min to every row of D. Note that in the case of multiple minima,
+the first match will be returned. At the end of this subsection we show how this code can be
+simplified with the stringdist package.
+Finally, we mention three more functions based on string distances. First, the R-built-in function
+agrep is similar to grep, but it allows one to specify a maximum Levenshtein distance between
+the input pattern and the found substring. The agrep function allows for searching for regular
+expression patterns, which makes it very flexible.
+Secondly, the stringdist package32 offers a function called stringdist which can compute a
+variety of string distance metrics, some of which are likely to provide results that are better than
+adist's. Most importantly, the distance function used by adist does not allow for character
+transpositions, which is a common typographical error. Using the optimal string alignment
+distance (the default choice for stringdist) we get
+library(stringdist)
+stringdist("abc", "bac")
+## [1] 1
+
+The answer is now 1 (not 2 as with adist), since the optimal string alignment distance allows for
+transpositions of adjacent characters:
+abc→ bac.
+
+Thirdly, the stringdist package provides a function called amatch, which mimics the
+behaviour of R's match function: it returns an index to the closest match within a maximum
+distance. Recall the gender and code example of page 25.
+# this yields the closest match of 'gender' in 'codes' (within a distance of 4)
+(i <- amatch(gender,codes,maxDist=4))
+## [1] 1 1 2 2
+# store results in a data.frame
+data.frame(
+rawtext = gender
+, code = codes[i]
+)
+## rawtext code
+## 1 M male
+## 2 male male
+## 3 Female female
+## 4 fem. female
+
+ASCII is an encoding
+In fact, the definition can be more general, for example to include Morse code. However, we limit ourselves to computerized
+character encodings.
+An introduction to data cleaning with R 26
+system that prescribes how to translate 127 characters into single bytes (where the first bit of
+each byte is necessarily 0). The ASCII characters include the upper and lower case letters of the
+Latin alphabet (a-z, A-Z), Arabic numbers (0-9), a number of punctuation characters and a
+number of invisible so-called control characters such as newline and carriage return.
+Although it is widely used, ASCII is obviously incapable of encoding characters outside the
+Latin alphabet, so you can say ``hello'', but not ``𝛾𝜀𝜄𝛼 𝜎𝛼𝜍'' in this encoding. For this reason, a
+number of character encoding systems have been developed that extend ASCII or replace it all
+together. Some well-known schemes include UTF-8 and latin1. The character encoding
+scheme that is used by default by your operating system is defined in your locale settings.
+Most Unix-alikes use UTF-8 by default while older Windows applications, including the Windows
+version of R use latin1. The UTF-8 encoding standard is widely used to encode web pages:
+according to a frequently repeated survey of w3techs35, about 75% of the 10 million most
+visited web pages are encoded in UTF-8.
+You can find out the character encoding of your system by typing (not copy-pasting!) a
+non-ASCII character and ask for the encoding scheme, like so.
+Encoding("Queensrÿche")
+## [1] "unknown"
+If the answer is "unknown", this means that the local native encoding is used. The default
+encoding used by your OS can be requested by typing
+Sys.getlocale("LC_CTYPE")
+## [1] "en_US.UTF-8"
+
+The behaviour of R's core functionality is completely consistent with the idea that the analyst
+must decide what to do with missing data. A common choice, namely `leave out records with
+missing data' is supported by many base functions through the na.rm option.
+age <- c(23, 16, NA)
+mean(age)
+## [1] NA
+mean(age, na.rm = TRUE)
+## [1] 19.5
+
+print(person)
+## age height
+## 1 21 6.0
+## 2 42 5.9
+## 3 18 5.7*
+## 4 21 <NA>
+complete.cases(person)
+## [1] TRUE TRUE TRUE FALSE
+The resulting logical can be used to remove incomplete records from the data.frame.
+Alternatively the na.omit function, does the same.
+(persons_complete <- na.omit(person))
+## age height
+## 1 21 6.0
+## 2 42 5.9
+## 3 18 5.7*
+na.action(persons_complete)
+## 4
+## 4
+## attr(,"class")
+## [1] "omit"
+An introduction to data cleaning with R 32
+The result of the na.omit function is a data.frame where incomplete rows have been deleted.
+The row.names of the removed records are stored in an attribute called na.action.
+Note. It may happen that a missing value in a data set means 0 or Not applicable.
+If that is the case, it should be explicitly imputed with that value, because it is not
+unknown, but was coded as empty.
+
+3.1.2 Special values
+As explained in section 1.2.2, numeric variables are endowed with several formalized special
+values including ±Inf, NA and NaN. Calculations involving special values often result in special
+values, and since a statistical statement about a real-world phenomenon should never include a
+special value, it is desirable to handle special values prior to analysis.
+For numeric variables, special values indicate values that are not an element of the
+mathematical set of real numbers (ℝ). The function is.finite determines which values are
+`regular' values.
+is.finite(c(1, Inf, NaN, NA))
+## [1] TRUE FALSE FALSE FALSE
+This function accepts vectorial input. With little effort we can write a function that may be used
+to check every numerical column in a data.frame
+is.special <- function(x){
+if (is.numeric(x)) !is.finite(x) else is.na(x)
+}
+person
+## age height
+## 1 21 6.0
+## 2 42 5.9
+## 3 18 5.7*
+## 4 21 <NA>
+sapply(person, is.special)
+## age height
+## [1,] FALSE FALSE
+## [2,] FALSE FALSE
+## [3,] FALSE FALSE
+## [4,] FALSE TRUE
+Here, the is.special function is applied to each column of person using sapply. is.special
+checks its input vector for numerical special values if the type is numeric, otherwise it only
+checks for NA.
+
+Note. Outliers do not equal errors. They should be detected, but not necessarily
+removed. Their inclusion in the analysis is a statistical decision.
+For more or less unimodal and symmetrically distributed data, Tukey's box-and-whisker
+method29 for outlier detection is often appropriate. In this method, an observation is an outlier
+when it is larger than the so-called ``whiskers'' of the set of observations. The upper whisker is
+computed by adding 1.5 times the interquartile range to the third quartile and rounding to the
+nearest lower observation. The lower whisker is computed likewise.
+The base R installation comes with function boxplot.stats, which, amongst other things, list
+the outliers.
+x <- c(1:10, 20, 30)
+boxplot.stats(x)$out
+## [1] 20 30
+Here, 20 and 50 are detected as outliers since they are above the upper whisker of the
+observations in x. The factor 1.5 used to compute the whisker is to an extent arbitrary and it can
+be altered by setting the coef option of boxplot.stats. A higher coefficient means a higher
+outlier detection limit (so for the same dataset, generally less upper or lower outliers will be
+detected).
+boxplot.stats(x, coef = 2)$out
+## [1] 30
+
+hboutlier <- function(x,r){
+x <- x[is.finite(x)]
+stopifnot(
+length(x) > 0
+, all(x>0)
+)
+xref <- median(x)
+if (xref <= sqrt(.Machine$double.eps))
+warning("Reference value close to zero: results may be inaccurate")
+pmax(x/xref, xref/x) > r
+}
+The above function returns a logical vector indicating which elements of 𝑥 are outliers.
+
+3.1.4 Obvious inconsistencies
+An obvious inconsistency occurs when a record contains a value or combination of values that
+cannot correspond to a real-world situation. For example, a person's age cannot be negative, a
+man cannot be pregnant and an under-aged person cannot possess a drivers license.
+Such knowledge can be expressed as rules or constraints. In data editing literature these rules
+are referred to as edit rules or edits, in short. Checking for obvious inconsistencies can be done
+straightforwardly in R using logical indices and recycling. For example, to check which elements
+of x obey the rule `x must be non negative' one simply uses the following.
+x_nonnegative <- x >= 0
+However, as the number of variables increases, the number of rules may increase rapidly and it
+may be beneficial to manage the rules separate from the data. Moreover, since multivariate
+rules may be interconnected by common variables, deciding which variable or variables in a
+record cause an inconsistency may not be straightforward.
+The editrules package 6 allows one to define rules on categorical, numerical or mixed-type
+data sets which each record must obey. Furthermore, editrules can check which rules are
+obeyed or not and allows one to find the minimal set of variables to adapt so that all rules can be
+obeyed. The package also implements a number of basic rule operations allowing users to test
+rule sets for contradictions and certain redundancies.
+As an example, we will work with a small file containing the following data.
+1 age,agegroup,height,status,yearsmarried
+2 21,adult,6.0,single,-1
+3 2,child,3,married, 0
+4 18,adult,5.7,married, 20
+5 221,elderly, 5,widowed, 2
+6 34,child, -7,married, 3
+We read this data into a variable called people and define some restrictions on age using
+editset.
+people <- read.csv("files/people.txt")
+library(editrules)
+(E <- editset(c("age >=0", "age <= 150")))
+##
+## Edit set:
+## num1 : 0 <= age
+## num2 : age <= 150
+An introduction to data cleaning with R 35
+The editset function parses the textual rules and stores them in an editset object. Each rule
+is assigned a name according to it's type (numeric, categorical, or mixed) and a number. The
+data can be checked against these rules with the violatedEdits function. Record 4 contains
+an error according to one of the rules: an age of 21 is not allowed.
+violatedEdits(E, people)
+## edit
+## record num1 num2
+## 1 FALSE FALSE
+## 2 FALSE FALSE
+## 3 FALSE FALSE
+## 4 FALSE TRUE
+## 5 FALSE FALSE
+violatedEdits returns a logical array indicating for each row of the data, which rules are
+violated.
+The number and type of rules applying to a data set usually quickly grow with the number of
+variables. With editrules, users may read rules, specified in a limited R-syntax, directly from a
+text file using the editfile function. As an example consider the contents of the following text
+file.
+1 # numerical rules
+2 age >= 0
+3 height > 0
+4 age <= 150
+5 age > yearsmarried
+6
+7 # categorical rules
+8 status %in% c("married","single","widowed")
+9 agegroup %in% c("child","adult","elderly")
+10 if ( status == "married" ) agegroup %in% c("adult","elderly")
+11
+12 # mixed rules
+13 if ( status %in% c("married","widowed")) age - yearsmarried >= 17
+14 if ( age < 18 ) agegroup == "child"
+15 if ( age >= 18 && age <65 ) agegroup == "adult"
+16 if ( age >= 65 ) agegroup == "elderly"
+There are rules pertaining to purely numerical, purely categorical and rules pertaining to both
+data types. Moreover, there are univariate as well as multivariate rules. Comments are written
+behind the usual # character. The rule set can be read as follows.
+E <- editfile("files/edits.txt")
+As the number of rules grows, looking at the full array produced by violatedEdits becomes
+cumbersome. For this reason, editrules offers methods to summarize or visualize the result.
+ve <- violatedEdits(E, people)
+summary(ve)
+## Edit violations, 5 observations, 0 completely missing (0%):
+##
+## editname freq rel
+## cat5 2 40%
+## mix6 2 40%
+## num2 1 20%
+## num3 1 20%
+## num4 1 20%
+An introduction to data cleaning with R 36
+## mix8 1 20%
+##
+## Edit violations per record:
+##
+## errors freq rel
+## 0 1 20%
+## 1 1 20%
+## 2 2 40%
+## 3 1 20%
+plot(ve)
