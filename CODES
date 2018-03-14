@@ -37,6 +37,10 @@ Table ignores missing values. To include NA as a category in counts, include the
 MATRIX DE CORRELAÇÃO
 rcorr(as.matrix(mydata))
 
+MATRIX DE COVARIAÇÃO
+M<-cbind(V1, V3, V4)
+cov(M)
+
 
 
 
