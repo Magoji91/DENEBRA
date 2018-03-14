@@ -36,3 +36,25 @@ Table ignores missing values. To include NA as a category in counts, include the
 
 MATRIX DE CORRELAÇÃO
 rcorr(as.matrix(mydata))
+
+
+
+
+
+
+The principal( ) function in the psych package can be used to extract and rotate principal components.
+
+# Varimax Rotated Principal Components
+# retaining 5 components 
+library(psych)
+fit <- principal(mydata, nfactors=5, rotate="varimax")
+fit # print results
+
+The factor.pa( ) function in the psych package offers a number of factor analysis related functions, including principal axis factoring.
+
+# Principal Axis Factor Analysis
+library(psych)
+fit <- factor.pa(mydata, nfactors=3, rotation="varimax")
+fit # print results
+
+mydata can be a raw data matrix or a covariance matrix. Pairwise deletion of missing data is used. Rotation can be "varimax" or "promax".
