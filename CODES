@@ -1,0 +1,38 @@
+library(data.table)
+library(Hmisc)
+library(psych)
+
+
+mydata <- fread('http://www.stats.ox.ac.uk/pub/datasets/csb/ch11b.dat')
+head(mydata)
+mydata[!complete.cases(mydata),]
+
+install.packages("dplyr")
+library("dplyr")
+mydata2 = select(mydata, V1, V3, V4)
+
+#Remove duplicate rows based on all columns:
+distinct(mydata)
+
+# Remove duplicated rows based on a column
+distinct(mydata, V5)
+
+str(mydata)
+summary(mydata)
+describe(mydata)
+dim(mydata)
+
+# 3-Way Frequency Table
+mytable <- xtabs(~A+B+c, data=mydata)
+ftable(mytable) # print table 
+summary(mytable) # chi-square test of indepedence
+
+table( ) can also generate multidimensional tables based on 3 or more categorical variables. In this case, use the ftable( ) function to print the results more attractively.
+# 3-Way Frequency Table 
+mytable <- table(A, B, C) 
+ftable(mytable)
+
+Table ignores missing values. To include NA as a category in counts, include the table option exclude=NULL if the variable is a vector. If the variable is a factor you have to create a new factor using newfactor <- factor(oldfactor, exclude=NULL).
+
+MATRIX DE CORRELAÇÃO
+rcorr(as.matrix(mydata))
