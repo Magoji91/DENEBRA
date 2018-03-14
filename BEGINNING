@@ -263,6 +263,7 @@ An introduction to data cleaning with R 17
 ## 1 Gratt 1861 1892
 ## 2 Bob <NA> 1892
 ## 3 Emmet 1871 1937
+
 The function unlist concatenates all vectors in a list into one large character vector. We then
 use that vector to fill a matrix of class character. However, the matrix function usually fills
 up a matrix column by column. Here, our data is stored with rows concatenated, so we need to
@@ -351,6 +352,7 @@ Code description Example
 %d Day of the month as decimal number (01-31). 28
 %y Year without century (00-99) 13
 %Y Year including century. 2013
+
 This behaviour is according to the 2008 POSIX standard, but one should expect that
 this interpretation changes over time.
 It should be noted that lubridate (as well as R's base functionality) is only capable of
@@ -379,6 +381,7 @@ start by pointing out some common string cleaning operations.
 The stringr package offers a number of functions that make some string manipulation
 tasks a lot easier than they would be with R's base functions. For example, extra white spaces at
 the beginning or end of a string can be removed using str_trim.
+
 library(stringr)
 str_trim(" hello world ")
 ## [1] "hello world"
@@ -745,3 +748,243 @@ An introduction to data cleaning with R 36
 ## 2 2 40%
 ## 3 1 20%
 plot(ve)
+
+is principle, commonly referred to as the principle of Fellegi
+and Holt 9
+, is based on the idea that errors occur relatively few times and when they do, they
+occur randomly across variables. Over the years several algorithms have been developed to
+solve this minimization problem7 of which two have been implemented in editrules. The
+localizeErrors function provides access to this functionality.
+
+3.2.1 Simple transformation rules
+In practice, data cleaning procedures involve a lot of ad-hoc transformations. This may lead to
+long scripts where one selects parts of the data, changes some variables, selects another part,
+changes some more variables, etc. When such scripts are neatly written and commented, they
+can almost be treated as a log of the actions performed by the analyst. However, as scripts get
+longer it is better to store the transformation rules separately and log which rule is executed on
+what record. The deducorrect package offers functionality for this. Consider as an example
+the following (fictitious) dataset listing the body length of some brothers.
+(marx <- read.csv("files/marx.csv", stringsAsFactors = FALSE))
+## name height unit
+## 1 Gaucho 170.00 cm
+## 2 Zeppo 1.74 m
+## 3 Chico 70.00 inch
+## 4 Gummo 168.00 cm
+## 5 Harpo 5.91 ft
+The task here is to standardize the lengths and express all of them in meters. The obvious way
+would be to use the indexing techniques summarized in Section 1.2.1, which would look
+something like this.
+marx_m <- marx
+I <- marx$unit == "cm"
+marx_m[I, "height"] <- marx$height[I]/100
+I <- marx$unit == "inch"
+marx_m[I, "inch"] <- marx$height[I]/39.37
+I <- marx$unit == "ft"
+marx_m[I, "ft"] <- marx$height[I]/3.28
+marx_m$unit <- "m"
+Such operations quickly become cumbersome. Of course, in this case one could write a for-loop
+but that would hardly save any code. Moreover, if you want to check afterwards which values
+have been converted and for what reason, there will be a significant administrative overhead.
+The deducorrect package takes all this overhead of your hands with the correctionRules
+functionality. For example, to perform the above task, one first specifies a file with correction
+rules as follows.
+1 # convert centimeters
+2 if ( unit == "cm" ){
+3 height <- height/100
+4 }
+5 # convert inches
+6 if (unit == "inch" ){
+7 height <- height/39.37
+8 }
+9 # convert feet
+10 if (unit == "ft" ){
+11 height <- height/3.28
+12 }
+13 # set all units to meter
+14 unit <- "m"
+An introduction to data cleaning with R 40
+With deducorrect we can read these rules, apply them to the data and obtain a log of all actual
+changes as follows.
+# read the conversion rules.
+R <- correctionRules("files/conversions.txt")
+R
+## Object of class 'correctionRules'
+## ## 1-------
+## if (unit == "cm") {
+## height <- height/100
+## }
+## ## 2-------
+## if (unit == "inch") {
+## height <- height/39.37
+## }
+## ## 3-------
+## if (unit == "ft") {
+## height <- height/3.28
+## }
+## ## 4-------
+## unit <- "m"
+correctionRules has parsed the rules and stored them in a correctionRules object. We
+may now apply them to the data.
+cor <- correctWithRules(R, marx)
+The returned value, cor, is a list containing the corrected data
+cor$corrected
+## name height unit
+## 1 Gaucho 1.700 m
+## 2 Zeppo 1.740 m
+## 3 Chico 1.778 m
+## 4 Gummo 1.680 m
+## 5 Harpo 1.802 m
+as well as a log of applied corrections.
+cor$corrections[1:4]
+## row variable old new
+## 1 1 height 170 1.7
+## 2 1 unit cm m
+## 3 3 height 70 1.778
+## 4 3 unit inch m
+## 5 4 height 168 1.68
+## 6 4 unit cm m
+## 7 5 height 5.91 1.802
+## 8 5 unit ft m
+The log lists for each row, what variable was changed, what the old value was and what the new
+value is. Furthermore, the fifth column of cor$corrections shows the corrections that were
+applied (not shown above for formatting reasons)
+cor$corrections[5]
+## how
+## 1 if (unit == "cm") { height <- height/100 }
+## 2 unit <- "m"
+## 3 if (unit == "inch") { height <- height/39.37 }
+An introduction to data cleaning with R 41
+## 4 unit <- "m"
+## 5 if (unit == "cm") { height <- height/100 }
+## 6 unit <- "m"
+## 7 if (unit == "ft") { height <- height/3.28 }
+## 8 unit <- "m"
+So here, with just two commands, the data is processed and all actions logged in a data.frame
+which may be stored or analyzed. The rules that may be applied with deducorrect are rules
+that can be executed record-by-record.
+By design, there are some limitations to which rules can be applied with correctWithRules.
+The processing rules should be executable record-by-record. That is, it is not permitted to use
+functions like mean or sd. The symbols that may be used can be listed as follows.
+getOption("allowedSymbols")
+## [1] "if" "else" "is.na" "is.finite" "=="
+## [6] "<" "<=" "=" ">=" ">"
+## [11] "!=" "!" "%in%" "identical" "sign"
+## [16] "abs" "||" "|" "&&" "&"
+## [21] "(" "{" "<-" "=" "+"
+## [26] "-" "*" "^" "/" "%%"
+## [31] "%/%"
+When the rules are read by correctionRules, it checks whether any symbol occurs that is not
+in the list of allowed symbols and returns an error message when such a symbol is found as in
+the following example.
+correctionRules(expression(x <- mean(x)))
+##
+## Forbidden symbols found:
+## ## ERR 1 ------
+## Forbidden symbols: mean
+## x <- mean(x)
+## Error: Forbidden symbols found
+Finally, it is currently not possible to add new variables using correctionRules although such a
+feature will likely be added in the future.
+
+3.2.2 Deductive correction
+When the data you are analyzing is generated by people rather than machines or measurement
+devices, certain typical human-generated errors are likely to occur. Given that data has to obey
+certain edit rules, the occurrence of such errors can sometimes be detected from raw data with
+(almost) certainty. Examples of errors that can be detected are typing errors in numbers (under
+linear restrictions) rounding errors in numbers and sign errors or variable swaps 22. The
+deducorrect package has a number of functions available that can correct such errors. Below
+we give some examples, every time with just a single edit rule. The functions can handle larger
+sets of edits however.
+With correctRoundings deviations of the size of one or two measurement units can be
+repaired. The function randomly selects one variable to alter such that the rule violation(s) are
+nullified while no new violations are generated.
+An introduction to data cleaning with R 42
+e <- editmatrix("x + y == z")
+d <- data.frame(x = 100, y = 101, z = 200)
+cor <- correctRounding(e, d)
+cor$corrected
+## x y z
+## 1 100 101 201
+cor$corrections
+## row variable old new
+## 1 1 z 200 201
+The function correctSigns is able to detect and repair sign errors. It does this by trying
+combinations of variable swaps on variables that occur in violated edits.
+e <- editmatrix("x + y == z")
+d <- data.frame(x = 100, y = -100, z = 200)
+cor <- correctSigns(e, d)
+cor$corrected
+## x y z
+## 1 100 100 200
+cor$corrections
+## row variable old new
+## 1 1 y -100 100
+Finally, the function correctTypos is capable of detecting and correcting typographic errors in
+numbers. It does this by computing candidate solutions and checking whether those candidates
+are less than a certain string distance (see Section 2.4.2) removed from the original.
+e <- editmatrix("x + y == z")
+d <- data.frame(x = 123, y = 132, z = 246)
+cor <- correctTypos(e, d)
+cor$corrected
+## x y z
+## 1 123 123 246
+cor$corrections
+## row variable old new
+## 1 1 y 132 123
+Indeed, swapping the 3 and the 2 in 𝑦 = 132 solves the edit violation.
+Tip. Every correct- function in deducorrect is an object of class deducorrect.
+When printed, it doesn't show the whole contents (the corrected data and logging
+information) but a summary of what happened with the data. A deducorrect object
+also contains data on timing, user, and so on. See ?"deducorrect-object" for a full
+explanation.
+
+Note that deduImpute only imputes those values that can be derived with absolute certainty
+(uniquely) from the rules. In the example, there are many possible solutions to impute the last
+record and hence deduImpute leaves it untouched.
+Similar situations exist for categorical data, which are handled by deduImpute as well.
+E <- editarray(expression(
+age %in% c("adult","under-aged"),
+driverslicense %in% c(TRUE, FALSE),
+if ( age == "under-aged" ) !driverslicense
+))
+dat <- data.frame(
+age = NA,
+driverslicense = TRUE
+)
+dat
+## age driverslicense
+## 1 NA TRUE
+cor <- deduImpute(E,dat)
+cor$corrected
+## age driverslicense
+## 1 adult TRUE
+Here, deduImpute uses automated logic to derive from the conditional rules that if someone
+has a drivers license, he has to be an adult.
+
+3.3 Imputation
+Imputation is the process of estimating or deriving values for fields where data is missing. There
+is a vast body of literature on imputation methods and it goes beyond the scope of this tutorial
+to discuss all of them. In stead, we present in Table 3 an overview of packages that offer some
+kind of imputation method and list them against a number of popular model-based imputation
+methods. We note that the list of packages and methods are somewhat biased towards
+applications at Statistics Netherlands, as the table was originally produced during a study for
+internal purposes 31. Nevertheless we feel that this overview can be a quite useful place to start.
+De Waal, Pannekoek and Scholtus 7
+(Chpt. 7) give a consice overview of several well-established
+imputation methods.
+The packages Amelia, deducorrect and mix do not implement any of the methods mentioned
+in the table. That is because Amelia implements a multiple imputation method which was out
+of scope for the study mentioned above. The deducorrect package implements deductive and
+deterministic methods, and we choose not to call this model-based in this tutorial. The mix
+package implements a Bayesian estimation method based on an Markov Chain Monte Carlo
+algorithm.
+
+data(women)
+# add some missings
+height <- women$height
+height[c(6, 9)] <- NA
+height
+## [1] 58 59 60 61 62 NA 64 65 NA 67 68 69 70 71 72
+(height <- impute(height, "random"))
+## 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+## 58 59 60 61 62 64* 64 65 70* 67 68 69 70 71 72
