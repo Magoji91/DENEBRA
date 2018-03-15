@@ -35,9 +35,13 @@ ftable(mytable)
 Table ignores missing values. To include NA as a category in counts, include the table option exclude=NULL if the variable is a vector. If the variable is a factor you have to create a new factor using newfactor <- factor(oldfactor, exclude=NULL).
 
 
+#You tend to use the covariance matrix when the variable scales are similar and the correlation matrix when variables are on different scales.
 
 
 MATRIX DE CORRELAÇÃO
+A correlação nunca pode ser maior do que 1 ou menor do que menos 1. Uma correlação próxima a zero indica que as duas variáveis não estão relacionadas. Uma correlação positiva indica que as duas variáveis movem juntas, e a relação é forte quanto mais a correlação se aproxima de um. Uma correlação negativa indica que as duas variáveis movem-se em direções opostas, e que a relação também fica mais forte quanto mais próxima de menos 1 a correlção ficar. Duas variáveis que estão perfeitamente correlacionadas positivamente (r=1) movem-se essencialmente em perfeita proporção na mesma direção, enquanto dois conjuntos que estão perfeitamente correlacionados negativamente movem-se em perfeita proporção em direções opostas.
+
+
 library(Hmisc)
 rcorr(as.matrix(mydata))
 
@@ -47,10 +51,25 @@ install.packages("tseries")
 library(corpcor)
 library(tseries)
 
-cov.shrink(covmat)
+cov.shrink(mydata)
 
+ Analysis of Covariance also called as ANCOVA
+# Get the dataset.
+input <- mydata
 
+# Create the regression model.
+result <- aov(V4~V3+V1,data = input)
+print(summary(result))
 
+# Get the dataset.
+input <- mtcars
+
+# Create the regression models.
+result1 <- aov(V4~V3*V1,data = input)
+result2 <- aov(V4~V3+V1,data = input)
+
+# Compare the two models.
+print(anova(result1,result2))
 
 
 
