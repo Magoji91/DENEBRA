@@ -38,7 +38,7 @@ MATRIX DE CORRELAÇÃO
 rcorr(as.matrix(mydata))
 
 MATRIX DE COVARIAÇÃO
-M<-cbind(V1, V3, V4)
+M <- cbind(V1, V3, V4)
 cov(M)
 
 
